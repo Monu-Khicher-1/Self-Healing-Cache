@@ -59,7 +59,7 @@ Caching is working in single thread, however, other background tasks like rebala
 
 ## Working on
 1. Replication logic and building self-healing system
-2Implementing "PUT" and "DELETE" operations in the cache.
+2. Implementing "PUT" and "DELETE" operations in the cache.
 
 ### Strategies
 1. "DUAL WRITE" strategy: For handling data updates during rebalancing
