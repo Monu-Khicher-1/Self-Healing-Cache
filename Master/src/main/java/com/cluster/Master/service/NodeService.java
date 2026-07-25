@@ -2,6 +2,7 @@ package com.cluster.Master.service;
 
 
 import com.cluster.Master.model.ClusterNode;
+import com.cluster.Master.model.HeartBeatRequest;
 import com.cluster.Master.model.RegistrationRequest;
 import com.cluster.Master.repository.NodeRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +40,8 @@ public class NodeService {
         return nodeRepository.findAll();
     }
 
-    public ClusterNode sendHeartbeat(String id) {
-        return nodeRepository.updateHeartBeat(id);
+    public ClusterNode sendHeartbeat(HeartBeatRequest request) {
+        return nodeRepository.updateHeartBeat(request);
     }
 
     public List<String> getExpired() {

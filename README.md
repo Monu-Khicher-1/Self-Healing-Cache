@@ -76,10 +76,62 @@ Caching is working in single thread, however, other background tasks like rebala
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: July 2026  
-**Next Review**: End of Week 2
+## Docker Setup
 
+Run all commands from the repository root.
+
+1. Create a Docker network:
+```bash
+docker network create self-healing-cache-net
+```
+
+2. Build images for Master and Node:
+```bash
+docker build -t self-healing-master:latest ./Master
+docker build -t self-healing-node:latest ./Node
+```
+
+3. Run Master container on the network:
+```bash
+docker run -d \
+  --name master \
+  --network self-healing-cache-net \
+  -p 8080:8080 \
+  self-healing-master:latest
+```
+
+4. Run Node containers on the same network:
+```bash
+docker run -d \
+  --name node1 \
+  --network self-healing-cache-net \
+  -p 8082:8082 \
+  -e CLUSTER_MASTER_HOST=master \
+  -e CLUSTER_MASTER_PORT=8080 \
+  -e CLUSTER_NODE_HOST=node1 \
+  -e SERVER_PORT=8082 \
+  self-healing-node:latest
+```
+
+```bash
+docker run -d \
+  --name node2 \
+  --network self-healing-cache-net \
+  -p 8083:8082 \
+  -e CLUSTER_MASTER_HOST=master \
+  -e CLUSTER_MASTER_PORT=8080 \
+  -e CLUSTER_NODE_HOST=node2 \
+  -e SERVER_PORT=8082 \
+  self-healing-node:latest
+```
+
+With this setup, each node now registers and heartbeats using its Docker-reachable endpoint (`CLUSTER_NODE_HOST` + `SERVER_PORT`) instead of `localhost`.
+
+---
+
+**Document Version**: 1.0  
+**Last Updated**: 26 July 2026  
+**Next Review**: End of Week 2
 
 
 

@@ -2,6 +2,7 @@ package com.cluster.Master.repository;
 
 
 import com.cluster.Master.model.ClusterNode;
+import com.cluster.Master.model.HeartBeatRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
@@ -40,12 +41,15 @@ public class NodeRepository {
         return new ArrayList<>(clusterNodeMap.values());
     }
 
-    public ClusterNode updateHeartBeat(String id){
+    public ClusterNode updateHeartBeat(HeartBeatRequest request){
+        String id = request.getId();
         ClusterNode clusterNode = findById(id);
         if(clusterNode == null){
             log.info("No object found for id:{}",id);
             return null;
         }
+        clusterNode.setHostname(request.getHostname());
+        clusterNode.setPort(request.getPort());
         clusterNode.setLastHeartbeat(Timestamp.valueOf(LocalDateTime.now()));
         clusterNodeMap.put(clusterNode.getId(),clusterNode);
         log.info("Cluster node updated heartbeat:{}",clusterNode);
