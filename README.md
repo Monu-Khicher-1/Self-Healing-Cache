@@ -76,6 +76,56 @@ Caching is working in single thread, however, other background tasks like rebala
 
 ---
 
+## Docker Setup
+
+Run all commands from the repository root.
+
+1. Create a Docker network:
+```bash
+docker network create self-healing-cache-net
+```
+
+2. Build images for Master and Node:
+```bash
+docker build -t self-healing-master:latest ./Master
+docker build -t self-healing-node:latest ./Node
+```
+
+3. Run Master container on the network:
+```bash
+docker run -d \
+  --name master \
+  --network self-healing-cache-net \
+  -p 8080:8080 \
+  self-healing-master:latest
+```
+
+4. Run Node containers on the same network:
+```bash
+docker run -d \
+  --name node1 \
+  --network self-healing-cache-net \
+  -p 8082:8082 \
+  -e CLUSTER_MASTER_HOST=master \
+  -e CLUSTER_MASTER_PORT=8080 \
+  -e CLUSTER_NODE_HOST=node1 \
+  -e SERVER_PORT=8082 \
+  self-healing-node:latest
+```
+
+```bash
+docker run -d \
+  --name node2 \
+  --network self-healing-cache-net \
+  -p 8083:8083 \
+  -e CLUSTER_MASTER_HOST=master \
+  -e CLUSTER_MASTER_PORT=8080 \
+  -e CLUSTER_NODE_HOST=node2 \
+  -e SERVER_PORT=8083 \
+  self-healing-node:latest
+```
+
+
 **Document Version**: 1.0  
 **Last Updated**: July 2026  
 **Next Review**: End of Week 2
