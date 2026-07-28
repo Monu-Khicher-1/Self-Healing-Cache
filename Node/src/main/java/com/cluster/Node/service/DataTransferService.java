@@ -43,7 +43,7 @@ public class DataTransferService {
             log.info("Found {} cache entries to transfer", entriesToTransfer.size());
             List<CacheRequest> dataToSend = entriesToTransfer.stream()
                     .map(entry -> {
-                        LocalDateTime ttlDateTime = entry.getTtl().toLocalDateTime();
+                        LocalDateTime ttlDateTime = entry.getExpireAt().toLocalDateTime();
                         long remainingMinutes = MINUTES.between(LocalDateTime.now(), ttlDateTime);
                         int ttlInMinutes = (int) Math.max(0, remainingMinutes);
                         return new CacheRequest(entry.getKey(), entry.getValue(), ttlInMinutes);

@@ -2,6 +2,7 @@ package com.cluster.Master.repository;
 
 
 import com.cluster.Master.model.ClusterNode;
+import com.cluster.Master.model.HeartBeatRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
@@ -10,15 +11,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Repository
 public class NodeRepository {
-    private int key;
+    private final AtomicInteger key;
     private ConcurrentHashMap<String, ClusterNode> clusterNodeMap;
     public NodeRepository() {
         clusterNodeMap = new ConcurrentHashMap<>();
-        key = 0;
+        key = new AtomicInteger(0);
     }
 
     public boolean exists(String id) {
@@ -31,7 +33,7 @@ public class NodeRepository {
 
 
     public ClusterNode save(ClusterNode clusterNode){
-        clusterNode.setId(String.valueOf(++key));
+        clusterNode.setId(String.valueOf(key.incrementAndGet()));
         clusterNodeMap.put(clusterNode.getId(),clusterNode);
         return clusterNode;
     }
@@ -40,12 +42,15 @@ public class NodeRepository {
         return new ArrayList<>(clusterNodeMap.values());
     }
 
-    public ClusterNode updateHeartBeat(String id){
+    public ClusterNode updateHeartBeat(HeartBeatRequest request){
+        String id = request.getId();
         ClusterNode clusterNode = findById(id);
         if(clusterNode == null){
             log.info("No object found for id:{}",id);
             return null;
         }
+        clusterNode.setHostname(request.getHostname());
+        clusterNode.setPort(request.getPort());
         clusterNode.setLastHeartbeat(Timestamp.valueOf(LocalDateTime.now()));
         clusterNodeMap.put(clusterNode.getId(),clusterNode);
         log.info("Cluster node updated heartbeat:{}",clusterNode);

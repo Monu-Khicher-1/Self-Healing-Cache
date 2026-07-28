@@ -29,7 +29,7 @@ public class CacheCleanupService {
         }
         log.info("Starting cleanup.");
         for (CacheEntry entry : data) {
-            if(entry.getTtl().before(Timestamp.valueOf(LocalDateTime.now()))) {
+            if(entry.getExpireAt().before(Timestamp.valueOf(LocalDateTime.now()))) {
                 log.info("Removing cache entry: {}", entry);
                 cacheRepository.removeValue(entry);
             }

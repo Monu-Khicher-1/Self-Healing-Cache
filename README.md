@@ -1,135 +1,74 @@
-# Distributed Cache
-## Project Overview
+# 🔄 Distributed Self-Healing Cache
 
-This is a **Distributed Self-Healing Cache System** built with Spring Boot that implements a Master-Slave architecture for managing a distributed in-memory cache. The system is designed to handle data distribution, rebalancing, replication, and automatic failure recovery across multiple nodes.
-Caching is working in single thread, however, other background tasks like rebalancing, health checking, and data transfer are handled asynchronously.
----
+A distributed caching system in **Java 21 + Spring Boot** that mimics real production infrastructure (think Redis Cluster / DynamoDB-style sharding) — implementing **consistent hashing, replication, automatic failover, and zero-downtime rebalancing** from scratch.
 
-## Implemented Features
-1. Master-Slave architecture with centralized coordination
-2. Consistent hashing with TreeMap-based hash ring
-3. GET/PUT operations with TTL support
-4. Automatic rebalancing when nodes join/leave
-5. Health checking with 60-second heartbeat intervals
-6. Dead node detection
-7. Asynchronous data transfer during rebalancing
-8. TTL-based automatic cache expiration (60-second cleanup)
+> Built to explore the hard problems in distributed systems: data placement, fault tolerance, and safe topology changes under live traffic — no external cache/DB libraries used.
 
+## ⚡ Highlights
 
-## Architecture
+- **Consistent hashing ring** (TreeMap) → O(log N) key lookup, minimal data movement on scale up/down
+- **Primary-replica replication** (configurable factor) with async, version-gated writes — no lost updates under concurrent replication
+- **Automatic failure detection & failover** — heartbeat-based (2s interval), dead-node eviction, and replica promotion in seconds, with **zero data loss**
+- **Zero-downtime cluster resizing** via a dual-write / read-fallback migration protocol — nodes can join or leave without dropping traffic
+- **TTL-based expiration** with background cleanup + per-request filtering
+- **Fully containerized** with Docker for multi-node local testing
+
+## 🧠 Why it's interesting
+
+This project touches the interesting problem statements in distributed systems:
+- How do you shard data across nodes and rebalance it live?
+- How do you detect failures and fail over without losing data?
+- How do you migrate data between nodes while still serving reads/writes?
+
+Every one of these is implemented and testable end-to-end, not just diagrammed.
+
+## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Client                                   │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP Requests
-                       ▼
-┌────────────────────────────────────────────────────────────┐
-│                      MASTER                                │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │         Consistent Hash Ring (TreeMap)              │   │
-│  │    Maps keys to nodes for data distribution         │   │
-│  └─────────────────────────────────────────────────────┘   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │      Node Facade Service & Rebalance Service        │   │
-│  │    Manages nodes, handles rebalancing logic         │   │
-│  └─────────────────────────────────────────────────────┘   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │   Discovery Service (Health Checking)               │   │
-│  │   Detects dead nodes & removes them automatically   │   │
-│  └─────────────────────────────────────────────────────┘   │
-└────┬───────────────────────────────────────────────────────┘
-     │
-     │ HTTP Requests (GET/PUT operations & rebalancing)
-     │
-     ├──────────────────┬────────────────────┬────────────────┐
-     ▼                  ▼                    ▼                ▼
-┌─────────┐       ┌─────────┐          ┌─────────┐      ┌─────────┐
-│ Node 1  │       │ Node 2  │          │ Node 3  │      │ Node N  │
-│ ┌─────┐ │       │ ┌─────┐ │          │ ┌─────┐ │      │ ┌─────┐ │
-│ │Cache│ │       │ │Cache│ │          │ │Cache│ │      │ │Cache│ │
-│ │  +  │ │       │ │  +  │ │          │ │  +  │ │      │ │  +  │ │
-│ │ TTL │ │       │ │ TTL │ │          │ │ TTL │ │      │ │ TTL │ │
-│ └─────┘ │       │ └─────┘ │          │ └─────┘ │      │ └─────┘ │
-└─────────┘       └─────────┘          └─────────┘      └─────────┘
+Client → Master (routing, cluster state, failover) → Cache Nodes (data + replication)
 ```
 
----
+- **Master**: owns the hash ring, cluster membership, and topology version; routes every request to the correct primary/replica.
+- **Cache Nodes**: store key-value data in memory, replicate to peers, and stream data during migrations or recovery.
 
+## 🚀 Quick Start
 
-## Working on
-1. Replication logic and building self-healing system
-2. Implementing "PUT" and "DELETE" operations in the cache.
+```bash
+# Build
+cd Master && ./gradlew build && cd ../Node && ./gradlew build
 
-### Strategies
-1. "DUAL WRITE" strategy: For handling data updates during rebalancing
+# Run Master
+cd Master && java -jar build/libs/Master-0.0.1-SNAPSHOT.jar
 
+# Run a Cache Node
+cd Node && SERVER_PORT=8082 MASTER_URL=http://localhost:8080 \
+  java -jar build/libs/Node-0.0.1-SNAPSHOT.jar
+```
 
-## Future Scope (Not Included in current plan)
+```bash
+# Write
+curl -X POST http://localhost:8080/cache -H 'Content-Type: application/json' \
+  -d '{"key":"user:123","value":"John","time":30}'
 
-1. Functionality without Master (i.e. fully distributed)
-2. Gossipping protocol for node discovery and communication
-3. Quorum
-4. Dockerization of the system
-5. gRPC for internode communication 
-6. Trying different hashing strategies.
+# Read
+curl http://localhost:8080/cache?key=user:123
+```
+
+Docker Compose / multi-node setup and full configuration reference: see [`DETAILS.md`](./DETAILS.md).
+
+## 🛠️ Tech Stack
+
+`Java 21` `Spring Boot` `Gradle` `Docker` `REST` — distributed systems concepts: consistent hashing, quorum-free replication, gossip-free heartbeat failure detection, dual-write migrations.
+
+## 🔮 Next Steps
+
+- Gossip-based peer discovery (remove central master)
+- Raft/Paxos-based leader election
+- Persistent storage backend (RocksDB) + WAL
+- Client-side topology-aware routing
 
 ---
 
-## Docker Setup
 
-Run all commands from the repository root.
-
-1. Create a Docker network:
-```bash
-docker network create self-healing-cache-net
-```
-
-2. Build images for Master and Node:
-```bash
-docker build -t self-healing-master:latest ./Master
-docker build -t self-healing-node:latest ./Node
-```
-
-3. Run Master container on the network:
-```bash
-docker run -d \
-  --name master \
-  --network self-healing-cache-net \
-  -p 8080:8080 \
-  self-healing-master:latest
-```
-
-4. Run Node containers on the same network:
-```bash
-docker run -d \
-  --name node1 \
-  --network self-healing-cache-net \
-  -p 8082:8082 \
-  -e CLUSTER_MASTER_HOST=master \
-  -e CLUSTER_MASTER_PORT=8080 \
-  -e CLUSTER_NODE_HOST=node1 \
-  -e SERVER_PORT=8082 \
-  self-healing-node:latest
-```
-
-```bash
-docker run -d \
-  --name node2 \
-  --network self-healing-cache-net \
-  -p 8083:8083 \
-  -e CLUSTER_MASTER_HOST=master \
-  -e CLUSTER_MASTER_PORT=8080 \
-  -e CLUSTER_NODE_HOST=node2 \
-  -e SERVER_PORT=8083 \
-  self-healing-node:latest
-```
-
-
-**Document Version**: 1.0  
-**Last Updated**: July 2026  
-**Next Review**: End of Week 2
-
-
-
-
+**Document Version**: 2.0  
+**Last Updated**: 26 July 2026

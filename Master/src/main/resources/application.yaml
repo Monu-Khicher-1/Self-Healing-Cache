@@ -2,9 +2,24 @@ spring:
   application:
     name: Master
 
+server:
+  port: ${SERVER_PORT:8080}
 
 cluster:
   settings:
     hashing: "SIMPLE"
-
+  replication:
+    factor: ${REPLICATION_FACTOR:2}
+  failure:
+    # How often the master scans for dead nodes, and how long without a heartbeat before a node
+    # is declared failed. Tune lower for faster failover, higher to tolerate transient pauses.
+    check-interval-ms: ${FAILURE_CHECK_INTERVAL_MS:60000}
+    timeout-ms: ${FAILURE_TIMEOUT_MS:240000}
+  migration:
+    # Time to let the async bulk copy and in-flight dual writes settle before verifying counts.
+    drain-ms: ${MIGRATION_DRAIN_MS:3000}
+    # How many copy+verify rounds to attempt before completing a transition without verification.
+    verify-attempts: ${MIGRATION_VERIFY_ATTEMPTS:3}
+    # Whether to drop obsolete copies from old owners after a verified transition completes.
+    cleanup-enabled: ${MIGRATION_CLEANUP_ENABLED:true}
 

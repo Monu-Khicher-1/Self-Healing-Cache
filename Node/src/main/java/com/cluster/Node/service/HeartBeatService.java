@@ -1,17 +1,16 @@
 package com.cluster.Node.service;
 
 
+import com.cluster.Node.model.register.HeartBeatRequest;
 import com.cluster.Node.model.register.RegistrationResponse;
 import com.cluster.Node.repository.NodeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClientException;
 
 @Slf4j
 @Service
@@ -24,7 +23,13 @@ public class HeartBeatService {
     @Value("${cluster.heartbeat.url}")
     private String url;
 
-    @Scheduled(fixedRate = 60000)
+    @Value("${cluster.node.host}")
+    private String nodeHost;
+
+    @Value("${server.port}")
+    private int nodePort;
+
+    @Scheduled(fixedRateString = "${cluster.heartbeat.interval-ms:60000}")
     public void sendheartBeat() {
 
         String id = nodeRepository.getNodeId();
@@ -32,16 +37,25 @@ public class HeartBeatService {
             log.info("Not able to send heartbeat with id is null");
             return;
         }
-        RegistrationResponse update = restClient.post()
-                .uri(url)
-                .body(id)
-                .retrieve()
-                        .body(RegistrationResponse.class);
 
-        if(update==null) return;
+        HeartBeatRequest request = new HeartBeatRequest(id, nodeHost, nodePort);
 
-        log.info("Updated Heartbeat: {}", update.getLastHeartbeat());
-        log.info("Sending heartbeat request to node {}", id);
+        try {
+            RegistrationResponse update = restClient.post()
+                    .uri(url)
+                    .body(request)
+                    .retrieve()
+                    .body(RegistrationResponse.class);
+
+            if (update == null) {
+                return;
+            }
+
+            log.info("Updated Heartbeat: {}", update.getLastHeartbeat());
+            log.info("Sending heartbeat request to node {}", id);
+        } catch (RestClientException ex) {
+            log.error("Failed heartbeat for node {} to {}: {}", id, url, ex.getMessage());
+        }
 
     }
 }
