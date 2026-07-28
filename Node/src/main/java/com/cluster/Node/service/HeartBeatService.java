@@ -29,7 +29,7 @@ public class HeartBeatService {
     @Value("${server.port}")
     private int nodePort;
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRateString = "${cluster.heartbeat.interval-ms:60000}")
     public void sendheartBeat() {
 
         String id = nodeRepository.getNodeId();

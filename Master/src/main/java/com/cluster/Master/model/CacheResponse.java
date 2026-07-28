@@ -9,5 +9,6 @@ import java.sql.Timestamp;
 public class CacheResponse {
     private String key;
     private String value;
-    private Timestamp ttl;
+    private Timestamp expireAt;
+    private long version;
 }

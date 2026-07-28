@@ -2,19 +2,22 @@ package com.cluster.Node.repository;
 
 
 import com.cluster.Node.model.cache.CacheEntry;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+@Getter
 @Slf4j
 @Repository
 public class CacheRepository {
-    private HashMap<String, CacheEntry> memoryMap;
+    private final Map<String, CacheEntry> memoryMap;
     CacheRepository() {
-        memoryMap = new HashMap<>();
+        memoryMap = new ConcurrentHashMap<>();
     }
 
     public CacheEntry get(String key){
@@ -30,10 +33,11 @@ public class CacheRepository {
         memoryMap.remove(entry.getKey());
     }
 
-
-    public HashMap<String, CacheEntry> getMemoryMap() {
-        return memoryMap;
+    public void removeByKey(String key){
+        memoryMap.remove(key);
     }
+
+
     public List<CacheEntry> getAllValues(){
         log.info("Getting cache list from repository");
         return new ArrayList<>(memoryMap.values());
@@ -54,6 +58,26 @@ public class CacheRepository {
         }
         log.info("Found {} entries in hash range", entries.size());
         return entries;
+    }
+
+    /** Number of entries whose key hash falls in {@code (startHash, endHash]} (wrap-aware). */
+    public long countByHashRange(long startHash, long endHash) {
+        return getEntriesByHashRange(startHash, endHash).size();
+    }
+
+    /**
+     * Drops every entry whose key hash falls in {@code (startHash, endHash]} (wrap-aware). Used to
+     * safely remove obsolete copies from an old owner after a replica-set transition completes.
+     *
+     * @return number of entries removed
+     */
+    public long removeByHashRange(long startHash, long endHash) {
+        List<CacheEntry> toRemove = getEntriesByHashRange(startHash, endHash);
+        for (CacheEntry entry : toRemove) {
+            memoryMap.remove(entry.getKey());
+        }
+        log.info("Removed {} entries in hash range [{}, {}]", toRemove.size(), startHash, endHash);
+        return toRemove.size();
     }
 
 }

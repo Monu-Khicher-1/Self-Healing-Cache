@@ -6,6 +6,7 @@ import com.cluster.Master.model.HeartBeatRequest;
 import com.cluster.Master.model.RegistrationRequest;
 import com.cluster.Master.repository.NodeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
@@ -17,6 +18,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NodeService {
     private final NodeRepository nodeRepository;
+
+    /** A node is considered failed if no heartbeat has arrived within this window (default 4 min). */
+    @Value("${cluster.failure.timeout-ms:240000}")
+    private long failureTimeoutMs;
 
     public ClusterNode findById(String id) {
         return nodeRepository.findById(id);
@@ -47,14 +52,12 @@ public class NodeService {
     public List<String> getExpired() {
         List<String> expiredNodes = new ArrayList<>();
         List<ClusterNode> nodes = nodeRepository.findAll();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime cutoff = LocalDateTime.now().minusNanos(failureTimeoutMs * 1_000_000);
 
         for (ClusterNode node : nodes) {
-
             if (node.getLastHeartbeat()
                     .toLocalDateTime()
-                    .plusMinutes(4)
-                    .isBefore(LocalDateTime.now())) {
+                    .isBefore(cutoff)) {
                 expiredNodes.add(node.getId());
             }
         }

@@ -11,15 +11,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Repository
 public class NodeRepository {
-    private int key;
+    private final AtomicInteger key;
     private ConcurrentHashMap<String, ClusterNode> clusterNodeMap;
     public NodeRepository() {
         clusterNodeMap = new ConcurrentHashMap<>();
-        key = 0;
+        key = new AtomicInteger(0);
     }
 
     public boolean exists(String id) {
@@ -32,7 +33,7 @@ public class NodeRepository {
 
 
     public ClusterNode save(ClusterNode clusterNode){
-        clusterNode.setId(String.valueOf(++key));
+        clusterNode.setId(String.valueOf(key.incrementAndGet()));
         clusterNodeMap.put(clusterNode.getId(),clusterNode);
         return clusterNode;
     }
